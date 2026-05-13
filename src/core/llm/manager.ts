@@ -22,6 +22,7 @@ import { OpenAICompatibleProvider } from './openaiCompatibleProvider'
 import { OpenAIResponsesProvider } from './openaiResponsesProvider'
 import { OpenRouterProvider } from './openRouterProvider'
 import { PerplexityProvider } from './perplexityProvider'
+import { ClaudeWebProvider } from './claudeWebProvider'
 import { QwenOAuthProvider } from './qwenOAuthProvider'
 import { resolveModelRequestPolicy } from './requestPolicy'
 import { AutoPromotedTransportMode } from './requestTransport'
@@ -69,6 +70,9 @@ export function getProviderClient({
           onAutoPromoteTransportMode: (mode) =>
             onAutoPromoteTransportMode?.(provider.id, mode),
         })
+      }
+      if (provider.presetType === 'claude-web') {
+        return new ClaudeWebProvider(provider as never, { requestPolicy })
       }
       return new AnthropicProvider(provider as never, {
         requestPolicy,

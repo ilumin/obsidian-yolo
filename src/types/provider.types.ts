@@ -22,6 +22,7 @@ export const providerPresetTypeSchema = z.enum([
   'gemini-oauth',
   'qwen-oauth',
   'anthropic',
+  'claude-web',
   'gemini',
   'deepseek',
   'moonshot',
@@ -77,7 +78,8 @@ export function getDefaultRequestTransportModeForPresetType(
     isDesktop &&
     (presetType === 'chatgpt-oauth' ||
       presetType === 'gemini-oauth' ||
-      presetType === 'qwen-oauth')
+      presetType === 'qwen-oauth' ||
+      presetType === 'claude-web')
   ) {
     return 'node'
   }
@@ -94,6 +96,7 @@ const DEFAULT_PROVIDER_API_TYPE_BY_PRESET: Record<
   'gemini-oauth': 'gemini',
   'qwen-oauth': 'openai-compatible',
   anthropic: 'anthropic',
+  'claude-web': 'anthropic',
   gemini: 'gemini',
   deepseek: 'openai-compatible',
   moonshot: 'openai-compatible',
