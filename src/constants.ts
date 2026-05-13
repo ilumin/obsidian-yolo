@@ -109,6 +109,14 @@ export const PROVIDER_PRESET_INFO = {
     supportEmbedding: false,
     additionalSettings: [REQUEST_TRANSPORT_MODE_SETTING],
   },
+  'claude-web': {
+    label: 'Claude.ai (Pro/Max)',
+    defaultProviderId: 'claude-web',
+    requireApiKey: false,
+    requireBaseUrl: false,
+    supportEmbedding: false,
+    additionalSettings: [REQUEST_TRANSPORT_MODE_SETTING],
+  },
   gemini: {
     label: 'Gemini',
     defaultProviderId: 'gemini',
@@ -340,6 +348,12 @@ export const DEFAULT_PROVIDERS: readonly LLMProvider[] = [
     presetType: 'anthropic',
     apiType: getDefaultApiTypeForPresetType('anthropic'),
     id: PROVIDER_PRESET_INFO.anthropic.defaultProviderId,
+  },
+  {
+    presetType: 'claude-web',
+    apiType: getDefaultApiTypeForPresetType('claude-web'),
+    id: PROVIDER_PRESET_INFO['claude-web'].defaultProviderId,
+    additionalSettings: getDefaultProviderAdditionalSettings('claude-web'),
   },
   {
     presetType: 'gemini',

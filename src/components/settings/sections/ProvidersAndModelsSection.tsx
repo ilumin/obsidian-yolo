@@ -510,6 +510,158 @@ function QwenOAuthPanel({
   )
 }
 
+function ClaudeWebPanel({
+  plugin,
+  provider,
+}: {
+  plugin: YoloPlugin
+  provider: LLMProvider
+}) {
+  const { t } = useLanguage()
+  const [loading, setLoading] = useState(true)
+  const [connected, setConnected] = useState(false)
+  const [organizationId, setOrganizationId] = useState<string | null>(null)
+  const [setAt, setSetAt] = useState<number | null>(null)
+  const [isStale, setIsStale] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [sessionKeyInput, setSessionKeyInput] = useState('')
+
+  const refreshStatus = useCallback(async () => {
+    setLoading(true)
+    try {
+      const status = await plugin.getClaudeWebStatus(provider.id)
+      setConnected(status.connected)
+      setOrganizationId(status.organizationId ?? null)
+      setSetAt(status.setAt ?? null)
+      setIsStale(status.isStale ?? false)
+    } catch (error) {
+      console.error('[YOLO] Failed to load Claude.ai status:', error)
+      setConnected(false)
+      setOrganizationId(null)
+      setSetAt(null)
+      setIsStale(false)
+    } finally {
+      setLoading(false)
+    }
+  }, [plugin, provider.id])
+
+  useEffect(() => {
+    void refreshStatus()
+  }, [refreshStatus])
+
+  const handleSave = () => {
+    const execute = async () => {
+      setIsSaving(true)
+      const service = plugin.getClaudeWebService(provider.id)
+      await service.setCredential(sessionKeyInput)
+      setSessionKeyInput('')
+      new Notice(t('settings.providers.claudeWebSaved', 'Claude.ai session key saved'))
+      await refreshStatus()
+    }
+
+    void execute()
+      .catch((error: unknown) => {
+        console.error('[YOLO] Failed to save Claude.ai session key:', error)
+        const message =
+          error instanceof Error ? error.message : 'Failed to save session key.'
+        new Notice(message)
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
+  }
+
+  const handleDisconnect = () => {
+    const execute = async () => {
+      await plugin.disconnectClaudeWebAccount(provider.id)
+      new Notice(t('settings.providers.claudeWebDisconnected', 'Claude.ai disconnected'))
+      await refreshStatus()
+    }
+
+    void execute().catch((error: unknown) => {
+      console.error('[YOLO] Failed to disconnect Claude.ai:', error)
+      new Notice('Failed to disconnect Claude.ai.')
+    })
+  }
+
+  return (
+    <div className="yolo-models-subsection">
+      <div className="yolo-models-subsection-header">
+        <span>
+          {t('settings.providers.claudeWebTitle', 'Claude.ai (Pro/Max)')}
+        </span>
+        {connected && (
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            className="yolo-add-model-btn yolo-chatgpt-oauth-disconnect-btn"
+          >
+            {t('settings.providers.claudeWebDisconnect', 'Disconnect')}
+          </button>
+        )}
+      </div>
+      <div className="yolo-no-models">
+        {!Platform.isDesktop
+          ? t(
+              'settings.providers.claudeWebDesktopOnly',
+              'Claude.ai (Pro/Max) is only available on desktop.',
+            )
+          : loading
+            ? t('settings.providers.claudeWebLoadingStatus', 'Loading...')
+            : connected
+              ? [
+                  t('settings.providers.claudeWebConnected', 'Connected'),
+                  organizationId ? `· org: ${organizationId}` : '',
+                  setAt
+                    ? `· ${t('settings.providers.claudeWebSetAt', 'saved')} ${new Date(setAt).toLocaleDateString()}`
+                    : '',
+                  isStale
+                    ? `· ⚠️ ${t('settings.providers.claudeWebStale', 'Session may be expired — please update the key')}`
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+              : t(
+                  'settings.providers.claudeWebDisconnectedHelp',
+                  'Not connected. Paste your sessionKey cookie from claude.ai to connect.',
+                )}
+      </div>
+      {Platform.isDesktop && (
+        <div className="yolo-chatgpt-oauth-note">
+          {t(
+            'settings.providers.claudeWebHowTo',
+            'How to get your session key: Open claude.ai → DevTools (F12) → Application → Cookies → copy the value of the "sessionKey" cookie.',
+          )}
+        </div>
+      )}
+      {Platform.isDesktop && (
+        <div className="yolo-models-subsection-header" style={{ marginTop: '8px', gap: '8px' }}>
+          <input
+            type="password"
+            placeholder={t(
+              'settings.providers.claudeWebSessionKeyPlaceholder',
+              'Paste sessionKey cookie value here...',
+            )}
+            value={sessionKeyInput}
+            onChange={(e) => setSessionKeyInput(e.target.value)}
+            style={{ flex: 1, minWidth: 0 }}
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            className="yolo-add-model-btn"
+            disabled={isSaving || !sessionKeyInput.trim()}
+          >
+            {isSaving
+              ? t('settings.providers.claudeWebSaving', 'Saving...')
+              : t('settings.providers.claudeWebSave', 'Save')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProviderSectionItem({
   provider,
   app,
@@ -535,6 +687,7 @@ function ProviderSectionItem({
   const isChatGPTOAuth = provider.presetType === 'chatgpt-oauth'
   const isGeminiOAuth = provider.presetType === 'gemini-oauth'
   const isQwenOAuth = provider.presetType === 'qwen-oauth'
+  const isClaudeWeb = provider.presetType === 'claude-web'
   const displayBaseUrl = getProviderDisplayBaseUrl(provider)
   const chatModelsLabel = `${chatModels.length} ${t('settings.providers.chatModels').replace(/^个/, '')}`
   const embeddingModelsLabel = `${embeddingModels.length} ${t('settings.providers.embeddingModels').replace(/^个/, '')}`
@@ -700,6 +853,9 @@ function ProviderSectionItem({
           )}
           {isQwenOAuth && (
             <QwenOAuthPanel plugin={plugin} provider={provider} />
+          )}
+          {isClaudeWeb && (
+            <ClaudeWebPanel plugin={plugin} provider={provider} />
           )}
           <ChatModelsTable
             provider={provider}
@@ -1398,6 +1554,10 @@ export function ProvidersAndModelsSection({
             .cancelPendingBrowserAuthorization()
           await plugin.disconnectQwenOAuthAccount(provider.id)
           plugin.clearQwenOAuthRuntime(provider.id)
+        }
+        if (provider.presetType === 'claude-web') {
+          await plugin.disconnectClaudeWebAccount(provider.id)
+          plugin.clearClaudeWebRuntime(provider.id)
         }
 
         if (associatedEmbeddingModels.length > 0) {

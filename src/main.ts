@@ -35,6 +35,11 @@ import {
   initializeQwenOAuthRuntime,
 } from './core/auth/qwenOAuthRuntime'
 import {
+  clearClaudeWebService,
+  getClaudeWebService as getClaudeWebServiceRuntime,
+  initializeClaudeWebRuntime,
+} from './core/auth/claudeWebRuntime'
+import {
   BackgroundActivity,
   BackgroundActivityAction,
   BackgroundActivityRegistry,
@@ -348,6 +353,43 @@ export default class YoloPlugin extends Plugin {
     clearQwenOAuthService(providerId)
   }
 
+  getClaudeWebService(providerId = 'claude-web') {
+    return (
+      getClaudeWebServiceRuntime(providerId) ??
+      initializeClaudeWebRuntime(this.app, this.manifest.id, providerId)
+    )
+  }
+
+  async getClaudeWebStatus(providerId = 'claude-web'): Promise<{
+    connected: boolean
+    organizationId?: string
+    setAt?: number
+    isStale?: boolean
+  }> {
+    const credential =
+      await this.getClaudeWebService(providerId).getUsableCredential()
+    if (!credential) {
+      return { connected: false }
+    }
+
+    return {
+      connected: true,
+      ...(credential.organizationId
+        ? { organizationId: credential.organizationId }
+        : {}),
+      setAt: credential.setAt,
+      isStale: this.getClaudeWebService(providerId).isStale(credential),
+    }
+  }
+
+  async disconnectClaudeWebAccount(providerId = 'claude-web'): Promise<void> {
+    await this.getClaudeWebService(providerId).clearCredential()
+  }
+
+  clearClaudeWebRuntime(providerId: string): void {
+    clearClaudeWebService(providerId)
+  }
+
   private syncOAuthRuntimesFromSettings(
     settings: Pick<YoloSettings, 'providers'> = this.settings,
   ): void {
@@ -360,6 +402,9 @@ export default class YoloPlugin extends Plugin {
       }
       if (provider.presetType === 'qwen-oauth') {
         this.getQwenOAuthService(provider.id)
+      }
+      if (provider.presetType === 'claude-web') {
+        this.getClaudeWebService(provider.id)
       }
     }
   }
